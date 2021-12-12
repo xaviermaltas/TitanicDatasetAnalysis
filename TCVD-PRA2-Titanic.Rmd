@@ -1,0 +1,75 @@
+---
+title: "TCVD-PRA2-Titanic"
+author: "Mónica Ortiz i Xavier Maltas"
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 2
+  word_document: default
+  pdf_document:
+    highlight: zenburn
+    toc: yes
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Descripció del dataset. Perquè és important i quina pregunta/problema pretén respondre?
+
+# Integració i selecció de les dades d’interès a analitzar.
+
+```{r}
+#Loading datasets
+dfFull <- read.csv("dataset/train.csv")
+dfTest <- read.csv("dataset/test.csv")
+```
+
+#Todo
+
+|     Variable     |                    Description                         |  Type   |
+|----------------- | -------------------------------------------------------| --------|
+|Any               | Any del registre                                       | Numèric |
+|Mes               | Mes del registre                                       | Numeric |
+|CodiDistrict      | ID del districte                                       | Numeric |
+|NomDistrict       | Nom del districte                                      | String  |
+|CodiBarri         | ID del barri                                           | Numeric |
+|NomBarri          | Nom del barri                                          | String  |
+|Poblacio16_64anys | Població entre 16 i 64 anys                            | Numeric |
+|PesAtur           | Percentatge atur dins la població d'entre 16 i 64 anys | Numeric |
+|                  |                                                        |         |
+
+```{r}
+head(dfFull)
+summary(dfFull)
+colnames(dfFull)
+```
+
+
+```{r}
+#Variables que mantenim - 'survived', 'pclass', 'name', 'sex', 'age', 'sibsp', 'parch', 'fare'
+# La variable 'name', pot tenir algun tipus amb el títol nobiliari? 
+
+relevantFields <- c("Survived", "Pclass", "Name", "Sex", "Age", "SibSp", "Parch", "Fare")
+df <- dfFull[relevantFields]
+
+```
+
+# Neteja de dades
+
+```{r}
+
+```
+
+# Anàlisi de les dades
+
+# Resultats
+
+# Conclusions: Resolució del problema
+
+
+
