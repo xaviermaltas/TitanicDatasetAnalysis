@@ -7,11 +7,12 @@ dfTest <- read.csv("dataset/test.csv")
 head(dfFull)
 colnames(dfFull)
 
-#Variables que mantenim - 'survived', 'pclass', 'name', 'sex', 'age', 'sibsp', 'parch', 'fare'
-# La variable 'name', pot tenir algun tipus amb el títol nobiliari? 
+#Variables que mantenim - 'survived', 'pclass', 'sex', 'age', 'sibsp', 'parch', 'fare'
+# La variable 'name', pot tenir algun tipus amb el títol nobiliari? Finalment no mantenim 'name'
+#No es una variable que importi a l'hora de predir si un passatger sobreviu o no.
 
 # -Integració i seleccio dades-
-relevantFields <- c("Survived", "Pclass", "Name", "Sex", "Age", "SibSp", "Parch", "Fare")
+relevantFields <- c("Survived", "Pclass", "Sex", "Age", "SibSp", "Parch", "Fare")
 df <- dfFull[relevantFields]
 
 # -Neteja de dades-
@@ -28,23 +29,30 @@ colSums(is.na(df))
 colSums(df=="")
 
 #Analisi camp 'Age'
+#La seguent linia es per fer un gràfic on veu el  nombre de passatgers per grups d'edats i es detecta que la gran majoria estan entre els 20 i 29 anys??
+#df["segment_edat"] <- cut(df$Age, breaks = c(0,10,20,30,40,50,60,70,100), labels = c("0-9", "10-19", "20-29", "30-39","40-49","50-59","60-69","70-79"))
+#plot(df$segment_edat)
+
+#Identificació dels outliers
+#Les variables a analitzar del dataframe són 'Age' i 'Fare' ja que són les úniques pròpiament numèriques. 
+#Graficar els gràfics de caixes per veure els outliers: 
 summary(df[,"Age"])
-df["segment_edat"] <- cut(df$Age, breaks = c(0,10,20,30,40,50,60,70,100), labels = c("0-9", "10-19", "20-29", "30-39","40-49","50-59","60-69","70-79"))
-plot(df$segment_edat)
 age.bp <- boxplot(df$Age, xlab = "Age", horizontal=TRUE)
-ageOutliers <- age.bp$out #boxplot outliers
-ageOutliers
+ageOutliersAge <- age.bp$out #boxplot outliers
 
 #Outliers verification
 
-# Q1 - 1,5 · IQR - https://www.adictosaltrabajo.com/2019/11/28/deteccion-y-reemplazo-de-outliers-con-r/
-firstQuartile <- summary(df[,"Age"])[2]
-firstQuartile <- quantile(df[,"Age"],0.25)
-firstQuartile
-thirdQuartile <- summary(df[,"Age"])[5]
-thirdQuartile
-IQR <- thirdQuartile-firstQuartile
-IQR
+#https://www.adictosaltrabajo.com/2019/11/28/deteccion-y-reemplazo-de-outliers-con-r/
+#firstQuartileAge <- summary(df[,"Age"])[2] 
+#thirdQuartileAge <- summary(df[,"Age"])[5]
+quantile(df$Age)
+iAge <- IQR(df$Age)
+#Outliers per damunt del bigotis:
+#Q3 + 1,5 x IQR 
+out_upp_Age <- 35 + 1.5 * iAge
+#Outliers per sota del bigotis: 
+#Q1 - 1,5 x IQR
+out_low_Age <- 22 - 1.5 * iAge
 
 # Criterio +/-2SD - 
 #https://machinelearningmastery.com/how-to-use-statistics-to-identify-outliers-in-data/
@@ -52,11 +60,58 @@ IQR
 mean<-mean(df$Age)
 sd<-sd(df$Age)
 cutoff<- sd*2
-upperBoundary <- mean+cutoff
-lowerBoundary <- mean-cutoff
-
-age.outlier <- abs(scale(df$Age)) > 2
-outliers <- na.omit(rbind(df[age.outlier,],df$Age)) #http://r-statistics.co/Outlier-Treatment-With-R.html
+upperBoundaryAge <- mean+cutoff
+lowerBoundaryAge <- mean-cutoff
+#Graficar els outliers amb gràfic de punts: 
+age.outlier.Age <- abs(scale(df$Age)) > 2
+outliers <- na.omit(rbind(df[age.outlier.Age,],df$Age)) #http://r-statistics.co/Outlier-Treatment-With-R.html
 dataSetWOutliers <- df[!(df$Age %in% outliers$Age),]
 plot(dataSetWOutliers$Age, pch=0, xlab="Nº item", ylab="Age",ylim=c(0,90))
 points(outliers$Age, pch=16, col="red")
+
+#Identificació outliers variable 'Fare':
+#Analitzar estadístiques de 'Fare':
+summary(df$Fare)
+#Graficar els gràfics de caixes per veure els outliers: 
+fare.bp <- boxplot(df$Fare, xlab = "Fare", horizontal=TRUE)
+fareOutliers <- fare.bp$out #boxplot outliers
+
+#Fare outliers:
+#firstQuartileFare <- summary(df[,"Fare"])[2]
+#thirdQuartileFare <- summary(df[,"Fare"])[5]
+
+quantile(df$Fare)
+iFare <- IQR(df$Fare)
+#Outliers per damunt del bigotis:
+#Q3 + 1,5 x IQR 
+out_upp_Fare <- 31 + 1.5 * iFare
+
+#Outliers per sota del bigotis: 
+#Q1 - 1,5 x IQR
+out_low_Fare <- 7.91 - 1.5 * iFare
+
+# Criterio +/-2SD - verificació outliers 'Fare'
+mean<-mean(df$Fare)
+sd<-sd(df$Fare)
+cutoff<- sd*2
+upperBoundaryFare <- mean+cutoff
+lowerBoundaryFare <- mean-cutoff
+
+fare.outlier <- abs(scale(df$Fare)) > 2
+outliers <- na.omit(rbind(df[fare.outlier,],df$Fare))
+dataSetWOutliers <- df[!(df$Fare %in% outliers$Fare),]
+plot(dataSetWOutliers$Fare, pch=0, xlab="Nº item", ylab="Fare", ylim = c(0,515))
+points(outliers$Fare, pch=16, col="red")
+
+#Els outliers 'Age' els eliminem del dataframe, ja que no son gaires i generen soroll i desviacions 
+#quan fem anàlisis i fem models de predicció.
+
+#Els de 'Fare'són bastant més que al treure'ls sí estariem traient molta informació del data,
+#Decidim deixar-los en el dataframe per analitzar ja que son dades reals la tripulacio no pagava res
+#En canvi els rics de 1ª classe pagaven moltes lliures, es una diferenciació REAL. 
+
+#Eliminar outliers variable Age:
+library('dplyr')
+df_clean <- df %>% filter(Age > 2 & Age < 55)
+
+
