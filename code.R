@@ -1,11 +1,12 @@
 # -Setup-
 
-dfFull <- read.csv("dataset/train.csv")
-dfTest <- read.csv("dataset/test.csv")
+df.full <- read.csv("dataset/train.csv")
+df.test <- read.csv("dataset/test.csv")
+df.realSurvived <- read.csv("dataset/gender_submission.csv")
 
 # -Descripció dataset-
-head(dfFull)
-colnames(dfFull)
+head(df.full)
+colnames(df.full)
 
 #Variables que mantenim - 'survived', 'pclass', 'sex', 'age', 'sibsp', 'parch', 'fare'
 # La variable 'name', pot tenir algun tipus amb el títol nobiliari? Finalment no mantenim 'name'
@@ -13,7 +14,7 @@ colnames(dfFull)
 
 # -Integració i seleccio dades-
 relevantFields <- c("Survived", "Pclass", "Sex", "Age", "SibSp", "Parch", "Fare")
-df <- dfFull[relevantFields]
+df <- df.full[relevantFields]
 
 # -Neteja de dades-
 
@@ -27,6 +28,14 @@ df$Age[is.na(df$Age)] <- mean(df$Age,na.rm=T)
 
 colSums(is.na(df))
 colSums(df=="")
+
+#Sex to dummy variables
+sexfactor = factor(df$Sex)
+dummies.sex = model.matrix(~sexfactor)
+df <- data.frame(df, dummies.sex[,2])
+df$dummies.sex <- df$dummies.sex...2.
+df$dummies.sex...2. <- NULL
+
 
 #Analisi camp 'Age'
 #La seguent linia es per fer un gràfic on veu el  nombre de passatgers per grups d'edats i es detecta que la gran majoria estan entre els 20 i 29 anys??
@@ -112,6 +121,49 @@ points(outliers$Fare, pch=16, col="red")
 
 #Eliminar outliers variable Age:
 library('dplyr')
-df_clean <- df %>% filter(Age > 2 & Age < 55)
+df.clean <- df %>% filter(Age > 2 & Age < 55)
 
+# -Analisi de les dades-
+
+#Model de regressió logistica
+if (!require('caret')) install.packages('caret'); library('caret')
+
+#Creating Sigmoide function
+RL.model <- glm(Survived ~ Pclass + dummies.sex +Age + SibSp + Parch + Fare, data=df.clean, family=binomial) #https://stats.idre.ucla.edu/r/dae/logit-regression/
+summary(RL.model)
+
+#Clean Test DF
+df.test <- select(df.test, Pclass, Sex, Age, SibSp, Parch, Fare)
+colSums(is.na(df.test))
+colSums(df.test=="")
+df.test$Age[is.na(df.test$Age)] <- mean(df.test$Age,na.rm=T)
+df.test$Fare[is.na(df.test$Fare)] <- 0 #If this value is a NA, we set it to 0. We can not know which was its price.
+
+sexfactor.test = factor(df.test$Sex)
+dummies.sex.test = model.matrix(~sexfactor.test)
+df.test <- data.frame(df.test, dummies.sex.test[,2])
+df.test$dummies.sex <- df.test$dummies.sex.test...2.
+df.test$dummies.sex.test...2. <- NULL
+
+
+#Prediccions
+RL.predictions <- predict(RL.model, df.test)
+View(RL.predictions)
+plot(RL.predictions)
+
+#Apply Sigmoide function
+sigmoideFunction <- function(x){1/(1+exp(-x))}
+sigmoideNormailzedValues <- sapply(RL.predictions, sigmoideFunction)
+plot(sigmoideNormailzedValues)
+abline(h=0.5, col="red")
+
+#Computing survived parameter
+RL.survived <- ifelse(sigmoideNormailzedValues > 0.5, 1,0)
+View(RL.survived)
+df.test$predictedValue <- sigmoideNormailzedValues
+df.test$PredictedSurvived <- RL.survived
+
+
+#Test with the real results
+df.test$RealSurvived <- df.realSurvived$Survived
 
