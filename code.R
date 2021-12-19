@@ -163,7 +163,12 @@ View(RL.survived)
 df.test$predictedValue <- sigmoideNormailzedValues
 df.test$PredictedSurvived <- RL.survived
 
-
 #Test with the real results
 df.test$RealSurvived <- df.realSurvived$Survived
+
+#Confusion Matrix
+PredictedSurvivedFactor <- factor(df.test$PredictedSurvived)
+RealSurvivedFactor <- factor(df.test$RealSurvived)
+RL.confusionMatrix <- confusionMatrix(PredictedSurvivedFactor,RealSurvivedFactor)
+RL.confusionMatrix
 
