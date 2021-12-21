@@ -29,14 +29,6 @@ df$Age[is.na(df$Age)] <- mean(df$Age,na.rm=T)
 colSums(is.na(df))
 colSums(df=="")
 
-#Sex to dummy variables
-sexfactor = factor(df$Sex)
-dummies.sex = model.matrix(~sexfactor)
-df <- data.frame(df, dummies.sex[,2])
-df$dummies.sex <- df$dummies.sex...2.
-df$dummies.sex...2. <- NULL
-
-
 #Analisi camp 'Age'
 #La seguent linia es per fer un gràfic on veu el  nombre de passatgers per grups d'edats i es detecta que la gran majoria estan entre els 20 i 29 anys??
 #df["segment_edat"] <- cut(df$Age, breaks = c(0,10,20,30,40,50,60,70,100), labels = c("0-9", "10-19", "20-29", "30-39","40-49","50-59","60-69","70-79"))
@@ -125,11 +117,18 @@ df.clean <- df %>% filter(Age > 2 & Age < 55)
 
 # -Analisi de les dades-
 
-#Model de regressió logistica
+#Sex to dummy variables
+sexfactor = factor(df.clean$Sex)
+dummies.sex = model.matrix(~sexfactor)
+RL.df <- data.frame(df.clean, dummies.sex[,2])
+RL.df$dummies.sex <- RL.df$dummies.sex...2.
+RL.df$dummies.sex...2. <- NULL
+
+#RL - Model de regressió logistica 
 if (!require('caret')) install.packages('caret'); library('caret')
 
 #Creating Sigmoide function
-RL.model <- glm(Survived ~ Pclass + dummies.sex +Age + SibSp + Parch + Fare, data=df.clean, family=binomial) #https://stats.idre.ucla.edu/r/dae/logit-regression/
+RL.model <- glm(Survived ~ Pclass + dummies.sex +Age + SibSp + Parch + Fare, data=RL.df, family=binomial) #https://stats.idre.ucla.edu/r/dae/logit-regression/
 summary(RL.model)
 
 #Clean Test DF
@@ -139,15 +138,17 @@ colSums(df.test=="")
 df.test$Age[is.na(df.test$Age)] <- mean(df.test$Age,na.rm=T)
 df.test$Fare[is.na(df.test$Fare)] <- 0 #If this value is a NA, we set it to 0. We can not know which was its price.
 
-sexfactor.test = factor(df.test$Sex)
+#RL df.test
+RL.df.test <- df.test
+sexfactor.test = factor(RL.df.test$Sex)
 dummies.sex.test = model.matrix(~sexfactor.test)
-df.test <- data.frame(df.test, dummies.sex.test[,2])
-df.test$dummies.sex <- df.test$dummies.sex.test...2.
-df.test$dummies.sex.test...2. <- NULL
+RL.df.test <- data.frame(RL.df.test, dummies.sex.test[,2])
+RL.df.test$dummies.sex <- RL.df.test$dummies.sex.test...2.
+RL.df.test$dummies.sex.test...2. <- NULL
 
 
 #Prediccions
-RL.predictions <- predict(RL.model, df.test)
+RL.predictions <- predict(RL.model, RL.df.test)
 View(RL.predictions)
 plot(RL.predictions)
 
@@ -160,15 +161,64 @@ abline(h=0.5, col="red")
 #Computing survived parameter
 RL.survived <- ifelse(sigmoideNormailzedValues > 0.5, 1,0)
 View(RL.survived)
-df.test$predictedValue <- sigmoideNormailzedValues
-df.test$PredictedSurvived <- RL.survived
+RL.df.test$predictedValue <- sigmoideNormailzedValues
+RL.df.test$PredictedSurvived <- RL.survived
 
 #Test with the real results
-df.test$RealSurvived <- df.realSurvived$Survived
+RL.df.test$RealSurvived <- df.realSurvived$Survived
 
 #Confusion Matrix
-PredictedSurvivedFactor <- factor(df.test$PredictedSurvived)
-RealSurvivedFactor <- factor(df.test$RealSurvived)
+PredictedSurvivedFactor <- factor(RL.df.test$PredictedSurvived)
+RealSurvivedFactor <- factor(RL.df.test$RealSurvived)
 RL.confusionMatrix <- confusionMatrix(PredictedSurvivedFactor,RealSurvivedFactor)
 RL.confusionMatrix
 
+#DT - Decision Tree
+DT.df <- df.clean
+
+#C50
+DT.C50.df <- DT.df
+DT.C50.df.test <- df.test
+if(!require(C50)){
+  install.packages('C50', repos='http://cran.us.r-project.org')
+  library(C50)
+}
+library(C50)
+DT.df.y <- DT.df[1]
+DT.df.y.factor = as.factor(DT.df.y)
+DT.df.x <- DT.df[2:7]
+DT.model <- C50::C5.0(DT.df.x, DT.df.y.factor, rules=TRUE )
+summary(DT.model)
+
+#rpart
+if (!require('rpart')) install.packages('rpart'); library('rpart')
+if (!require('rpart.plot')) install.packages('rpart.plot'); library('rpart.plot')
+
+DT.rpart.df <- DT.df
+DT.rpart.df.test <- df.test
+
+#Model creation
+DT.rpart.model <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare, data=DT.rpart.df)
+summary(DT.rpart.model)
+rpart.plot(DT.rpart.model)
+
+#Predictions
+DT.rpart.predictions <- predict(DT.rpart.model, DT.rpart.df.test)
+View(DT.rpart.predictions)
+
+DT.rpart.survived <- ifelse(DT.rpart.predictions > 0.5, 1,0)
+View(DT.rpart.survived)
+
+#Adding columns for the comparison
+DT.rpart.predictions <- factor(DT.rpart.predictions)
+DT.rpart.df.test$predictedValue <- DT.rpart.predictions
+DT.rpart.df.test$PredictedSurvived <- DT.rpart.survived
+DT.rpart.df.test$RealSurvived <- df.realSurvived$Survived
+
+#Confusion Matrix
+
+DT.rpart.predictedSurvived.factor <- factor(DT.rpart.df.test$PredictedSurvived)
+DT.rpart.realSurvived.factor <- factor(DT.rpart.df.test$RealSurvived)
+
+DT.rpart.confusionMatrix <- confusionMatrix(DT.rpart.predictedSurvived.factor,DT.rpart.realSurvived.factor)
+DT.rpart.confusionMatrix
