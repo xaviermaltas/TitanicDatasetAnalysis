@@ -14,21 +14,284 @@ output:
     toc: yes
 ---
 
+# Descripció del dataset. Perquè és important i quina pregunta/problema pretén respondre?
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+El dataset que hem escollit ha sigut 'Titanic - Machine Learning from Disaster' de la web: https://www.kaggle.com/c/titanic
+
+La informació del mateix són dades de cada passatger, com si va sobreviure o no, el sexe, el cost del ticket, entre altres. La pregunta que volen respondre és: Quin tipus de passatgers, segons les dades del dataset, podrien sobreviure?
+A continuació ensenyem les dades que conté: 
+
+
+```{r,echo=FALSE, eval = TRUE}
+df.full <- read.csv("train.csv")
+df.test <- read.csv("test.csv")
+df.realSurvived <- read.csv("gender_submission.csv")
+head(df.full)
 ```
 
-# Descripció del dataset. Perquè és important i quina pregunta/problema pretén respondre?
+El tipus de variable de cadascuna de les columnes és: 
+
+```{r,echo=FALSE, eval = TRUE}
+print(paste("We are evaluating", nrow(df.full), "rows of code"))
+print("Column's names: ")
+colnames(df.full)
+sapply(df.full,class)
+str(df.full)
+summary(df.full)
+
+```
+
 
 # Integració i selecció de les dades d’interès a analitzar.
 
-```{r}
-#Loading datasets
-dfFull <- read.csv("dataset/train.csv")
-dfTest <- read.csv("dataset/test.csv")
+Les variables que mantenim per fer el posterior anàlisi de les dades són:
+
+- Survived
+- Pclass
+- Sex
+- Age
+- Sibsp
+- Parch
+- Fare
+
+```{r, echo=FALSE, eval = TRUE}
+
+relevantFields <- c("Survived", "Pclass", "Sex", "Age", "SibSp", "Parch", "Fare")
+df <- df.full[relevantFields]
+head(df)
+
 ```
 
+La variable 'name', podria tenir algun tipus de relació amb el títol nobiliari, però finalment no la mantenim, ja que
+no és una variable que importi a l'hora de predir si un passatger sobreviu o no.
+
+# Neteja de dades
+
+## Les dades contenen zeros o elements buits? Com gestionaries aquests casos?
+
+Veiem que la variable que conté valors nuls és 'Age', decidim reemplaçar aquests valors nuls per la mitjana total de la variable: 
+
+```{r, echo=TRUE, eval = TRUE}
+
+#Check NA values
+colSums(is.na(df))
+colSums(df=="")
+
+#All NA values of 'Age' var to mean age
+mean(df$Age)
+df$Age[is.na(df$Age)] <- mean(df$Age,na.rm=T)
+
+colSums(is.na(df))
+
+```
+## Identificació i tractament de valors extrems.
+
+
+Les variables a analitzar del dataframe són 'Age' i 'Fare' ja que són les úniques pròpiament numèriques. 
+Grafiquem els gràfics de caixes o boxplots per veure els outliers: 
+
+```{r, echo=TRUE, eval = TRUE}
+
+#Començarem amb els de la variable 'Age', veient estadístiques de la variable i graficant els boxplots: 
+summary(df$Age)
+age.bp <- boxplot(df$Age, xlab = "Age", horizontal=TRUE)
+ageOutliersAge <- age.bp$out
+ageOutliersAge
+
+#Aquesta primera verificació s'ha tret de la següent font de dades: 
+#https://www.adictosaltrabajo.com/2019/11/28/deteccion-y-reemplazo-de-outliers-con-r/
+
+quantile(df$Age)
+iAge <- IQR(df$Age)
+iAge
+#Outliers per damunt del bigotis:
+#Q3 + 1,5 x IQR 
+out_upp_Age <- 35 + 1.5 * iAge
+out_upp_Age
+#Outliers per sota del bigotis: 
+#Q1 - 1,5 x IQR
+out_low_Age <- 22 - 1.5 * iAge
+out_low_Age
+
+# Criteri +/-2SD - 
+#Hem utilitzat les següents pàgines web per guiar-nos amb aquest criteri:
+#https://machinelearningmastery.com/how-to-use-statistics-to-identify-outliers-in-data/
+#https://www.diegocalvo.es/calculo-de-outliers-en-r-distancia-de-gauss-y-de-mahalanobis/
+#http://r-statistics.co/Outlier-Treatment-With-R.html
+
+mean<-mean(df$Age)
+sd<-sd(df$Age)
+cutoff<- sd*2
+upperBoundaryAge <- mean+cutoff
+lowerBoundaryAge <- mean-cutoff
+
+#Graficar els outliers amb gràfic de punts: 
+age.outlier.Age <- abs(scale(df$Age)) > 2
+outliers <- na.omit(rbind(df[age.outlier.Age,],df$Age)) 
+dataSetWOutliers <- df[!(df$Age %in% outliers$Age),]
+plot(dataSetWOutliers$Age, pch=0, xlab="Nº item", ylab="Age",ylim=c(0,90))
+points(outliers$Age, pch=16, col="red")
+
+#Identificació outliers variable 'Fare':
+#Analitzar estadístiques de 'Fare':
+summary(df$Fare)
+#Graficar els boxplots per veure els outliers: 
+fare.bp <- boxplot(df$Fare, xlab = "Fare", horizontal=TRUE)
+fareOutliers <- fare.bp$out 
+fareOutliers
+#Fare outliers:
+quantile(df$Fare)
+iFare <- IQR(df$Fare)
+iFare
+#Outliers per damunt del bigotis:
+#Q3 + 1,5 x IQR 
+out_upp_Fare <- 31 + 1.5 * iFare
+out_upp_Fare
+#Outliers per sota del bigotis: 
+#Q1 - 1,5 x IQR
+out_low_Fare <- 7.91 - 1.5 * iFare
+out_low_Fare
+#En aquest cas el valor més baix és negatiu i com que no hi ha valors 'Fare' per sota de zero, vol dir que no hi ha outliers per sota del bigotis. 
+
+# Criterio +/-2SD:
+mean<-mean(df$Fare)
+sd<-sd(df$Fare)
+cutoff<- sd*2
+upperBoundaryFare <- mean+cutoff
+lowerBoundaryFare <- mean-cutoff
+
+fare.outlier <- abs(scale(df$Fare)) > 2
+outliers <- na.omit(rbind(df[fare.outlier,],df$Fare))
+dataSetWOutliers <- df[!(df$Fare %in% outliers$Fare),]
+plot(dataSetWOutliers$Fare, pch=0, xlab="Nº item", ylab="Fare", ylim = c(0,515))
+points(outliers$Fare, pch=16, col="red")
+
+#Els outliers 'Age' els eliminem del dataframe, ja que no son gaires i generen soroll i desviacions 
+#quan fem anàlisis i fem models de predicció.
+
+#Els de 'Fare'són bastant més, i al treure'ls sí estariem eliminant molta informació del data,
+#Decidim deixar-los en el dataframe per analitzar ja que son dades reals, perquè per exemple, la tripulacio no pagava #el ticket, en canvi els rics de 1ª classe pagaven els tickets molt més cars que els de tercera, és una diferenciació #REAL. 
+
+#Eliminem els outliers variable Age:
+library('dplyr')
+df.clean <- df %>% filter(Age > 2 & Age < 55)
+head(df.clean)
+```
+# Anàlisi de les dades i representació dels resultats a partir de taules i gràfiques.
+
+Hem decidit juntar el punt 4 i 5 perquè a mesura que anem fent anàlisis i prediccions del dataset anem mostrant les gràfiques corresponents d'aquella predicció en contret. D'aquesta manera el codi i els gràfics estan millor organitzats i s'entèn millor. 
+
+```{r, echo=TRUE, eval = TRUE}
+
+#Per començar hem creat una variable dummy amb 'Sex' per transofrmar-la en numèrica i poder utilitzar-la per fer predicions: 
+
+#Sex to dummy variables
+sexfactor = factor(df.clean$Sex)
+dummies.sex = model.matrix(~sexfactor)
+RL.df <- data.frame(df.clean, dummies.sex[,2])
+RL.df$dummies.sex <- RL.df$dummies.sex...2.
+RL.df$dummies.sex...2. <- NULL
+
+
+#Hem començat fent un model de regressió logística representat dins una funció Sigmoide: 
+
+#RL - Model de regressió logistica 
+if (!require('caret')) install.packages('caret'); library('caret')
+
+#Creating Sigmoide function
+RL.model <- glm(Survived ~ Pclass + dummies.sex +Age + SibSp + Parch + Fare, data=RL.df, family=binomial) #https://stats.idre.ucla.edu/r/dae/logit-regression/
+summary(RL.model)
+
+#Clean Test DF, per fer les prediccions necessitarem el datset de test, que hem carregat al començament de la pràctica, i també s'ha de netejar de la mateixa forma que el dataset de 'train': 
+
+df.test <- select(df.test, Pclass, Sex, Age, SibSp, Parch, Fare)
+colSums(is.na(df.test))
+colSums(df.test=="")
+df.test$Age[is.na(df.test$Age)] <- mean(df.test$Age,na.rm=T)
+df.test$Fare[is.na(df.test$Fare)] <- 0 #If this value is a NA, we set it to 0. We can not know which was its price.
+
+#Regressió Logística del dataset de test, df.test:
+RL.df.test <- df.test
+sexfactor.test = factor(RL.df.test$Sex)
+dummies.sex.test = model.matrix(~sexfactor.test)
+RL.df.test <- data.frame(RL.df.test, dummies.sex.test[,2])
+RL.df.test$dummies.sex <- RL.df.test$dummies.sex.test...2.
+RL.df.test$dummies.sex.test...2. <- NULL
+
+
+#Fem les prediccions
+RL.predictions <- predict(RL.model, RL.df.test)
+View(RL.predictions)
+plot(RL.predictions)
+
+#Apply Sigmoide function:
+sigmoideFunction <- function(x){1/(1+exp(-x))}
+sigmoideNormailzedValues <- sapply(RL.predictions, sigmoideFunction)
+plot(sigmoideNormailzedValues)
+abline(h=0.5, col="red")
+
+#Computing survived parameter:
+RL.survived <- ifelse(sigmoideNormailzedValues > 0.5, 1,0)
+View(RL.survived)
+RL.df.test$predictedValue <- sigmoideNormailzedValues
+RL.df.test$PredictedSurvived <- RL.survived
+
+#Test with the real results
+RL.df.test$RealSurvived <- df.realSurvived$Survived
+head(RL.df.test)
+#Per acabar de veure l'exactitud del model que acabem de crear fem una matriu de confusió, ja que és una bona forma de comprovar-ho: 
+PredictedSurvivedFactor <- factor(RL.df.test$PredictedSurvived)
+RealSurvivedFactor <- factor(RL.df.test$RealSurvived)
+RL.confusionMatrix <- confusionMatrix(PredictedSurvivedFactor,RealSurvivedFactor)
+RL.confusionMatrix
+#Aquest model té un exactitud del 95% segons la matriu de confusió.
+
+#DT - Decision Tree
+DT.df <- df.clean
+summary(DT.df)
+
+#Per fer l'anàlisi de prediccions d'arbre de decisió necessitem el paquet 'rpart' i per representar els resultats el 'rpart.plot':
+
+if (!require('rpart')) install.packages('rpart'); library('rpart')
+if (!require('rpart.plot')) install.packages('rpart.plot'); library('rpart.plot')
+
+DT.rpart.df <- DT.df
+DT.rpart.df.test <- df.test
+
+#Model creation
+DT.rpart.model <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare, data=DT.rpart.df)
+summary(DT.rpart.model)
+rpart.plot(DT.rpart.model)
+
+#Predictions
+DT.rpart.predictions <- predict(DT.rpart.model, DT.rpart.df.test)
+View(DT.rpart.predictions)
+
+DT.rpart.survived <- ifelse(DT.rpart.predictions > 0.5, 1,0)
+View(DT.rpart.survived)
+
+#Adding columns for the comparison:
+DT.rpart.predictions <- factor(DT.rpart.predictions)
+DT.rpart.df.test$predictedValue <- DT.rpart.predictions
+DT.rpart.df.test$PredictedSurvived <- DT.rpart.survived
+DT.rpart.df.test$RealSurvived <- df.realSurvived$Survived
+head(DT.rpart.df.test)
+#Confusion Matrix:
+
+DT.rpart.predictedSurvived.factor <- factor(DT.rpart.df.test$PredictedSurvived)
+DT.rpart.realSurvived.factor <- factor(DT.rpart.df.test$RealSurvived)
+
+DT.rpart.confusionMatrix <- confusionMatrix(DT.rpart.predictedSurvived.factor,DT.rpart.realSurvived.factor)
+DT.rpart.confusionMatrix
+#Aquest model té un exactitud del 94% segons la matriu de confusió, per tant el model de predicció de Regressió Logística, fet anteriorment seria una mica més acurat.
+```
+
+# Resultats i conclusions
+
+
+
+
+Amb aquesta taula jo la treuria.... en principi era per ensenyar les variables, però crec que és millor ensenyar-és fent un head del propi datset.
 #Todo
 
 |     Variable     |                    Description                         |  Type   |
@@ -42,34 +305,4 @@ dfTest <- read.csv("dataset/test.csv")
 |Poblacio16_64anys | Població entre 16 i 64 anys                            | Numeric |
 |PesAtur           | Percentatge atur dins la població d'entre 16 i 64 anys | Numeric |
 |                  |                                                        |         |
-
-```{r}
-head(dfFull)
-summary(dfFull)
-colnames(dfFull)
-```
-
-
-```{r}
-#Variables que mantenim - 'survived', 'pclass', 'name', 'sex', 'age', 'sibsp', 'parch', 'fare'
-# La variable 'name', pot tenir algun tipus amb el títol nobiliari? 
-
-relevantFields <- c("Survived", "Pclass", "Name", "Sex", "Age", "SibSp", "Parch", "Fare")
-df <- dfFull[relevantFields]
-
-```
-
-# Neteja de dades
-
-```{r}
-
-```
-
-# Anàlisi de les dades
-
-# Resultats
-
-# Conclusions: Resolució del problema
-
-
 
