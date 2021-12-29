@@ -154,15 +154,15 @@ plot(RL.predictions)
 
 #Apply Sigmoide function
 sigmoideFunction <- function(x){1/(1+exp(-x))}
-sigmoideNormailzedValues <- sapply(RL.predictions, sigmoideFunction)
+sigmoideNormailzedValues <- sapply(RL.predictions, sigmoideFunction) #https://www.guru99.com/r-apply-sapply-tapply.html#3
 plot(sigmoideNormailzedValues)
-abline(h=0.5, col="red")
+abline(h=0.5, col="red") # http://www.sthda.com/english/wiki/abline-r-function-an-easy-way-to-add-straight-lines-to-a-plot-using-r-software#add-an-horizontal-line
 
 #Computing survived parameter
 RL.survived <- ifelse(sigmoideNormailzedValues > 0.5, 1,0)
 View(RL.survived)
 RL.df.test$predictedValue <- sigmoideNormailzedValues
-RL.df.test$PredictedSurvived <- RL.survived
+RL.df.test$PredictedSurvived <- RL.survived #https://www.marsja.se/how-to-add-a-column-to-dataframe-in-r-with-tibble-dplyr/
 
 #Test with the real results
 RL.df.test$RealSurvived <- df.realSurvived$Survived
