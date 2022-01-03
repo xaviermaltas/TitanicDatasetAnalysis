@@ -1,6 +1,7 @@
 ---
-title: "TCVD-PRA2-Titanic"
-author: "Mónica Ortiz i Xavier Maltas"
+title: "Tipologia i cicle de vida de les dades: PRA2 - Titanic"
+author: "Autors: Mónica Ortiz i Xavier Maltas"
+date: "Decembre 2021"
 output:
   html_document:
     highlight: default
@@ -8,32 +9,39 @@ output:
     theme: cosmo
     toc: yes
     toc_depth: 2
+    includes:
+      in_header: RMD-header.html
   word_document: default
   pdf_document:
     highlight: zenburn
     toc: yes
 ---
+*****
 
-# Descripció del dataset. Perquè és important i quina pregunta/problema pretén respondre?
+# Introducció del dataset
 
-El dataset que hem escollit ha sigut 'Titanic - Machine Learning from Disaster' de la web: https://www.kaggle.com/c/titanic
+El dataset escollit per a elaborar aquest anàlisi ha sigut __'Titanic - Machine Learning from Disaster'__. Hi podreu accedir a través del següent enllaç a la pàgina web de Kaggle - https://www.kaggle.com/c/titanic
 
-La informació del mateix són dades de cada passatger, com si va sobreviure o no, el sexe, el cost del ticket, entre altres. La pregunta que volen respondre és: Quin tipus de passatgers, segons les dades del dataset, podrien sobreviure?
-A continuació ensenyem les dades que conté: 
+La informació que hi trobem es tracta d'un conjunt de dades associades a cada un dels passatgers del Titanic. A través d'aquestes generarem un model que ens permeti predir quin tipus de passatgers podrien sobreviure a la tragèdia tenint en compte els paràmetres o camps del dataset.
 
+A continuació carregarem les dades i exposem una petita mostra del dataset.
 
-```{r,echo=FALSE, eval = TRUE}
-df.full <- read.csv("train.csv")
-df.test <- read.csv("test.csv")
-df.realSurvived <- read.csv("gender_submission.csv")
+```{r}
+df.full <- read.csv("dataset/train.csv")
+df.test <- read.csv("dataset/test.csv")
+df.realSurvived <- read.csv("dataset/gender_submission.csv")
 head(df.full)
 ```
 
+# Estudi de les dades d'entrada
+
+Començarem realitzant un breu estudi de les dades d'entrada, ja que ens interessa obtenir una visió general de les dades que disposem en primera instància. És per aquest motiu que el primer pas és calcular el nombre de registres i la quantitat d'atributs que tenim al conjunt de dades d'entrenament.
+
+
 El tipus de variable de cadascuna de les columnes és: 
 
-```{r,echo=FALSE, eval = TRUE}
-print(paste("We are evaluating", nrow(df.full), "rows of code"))
-print("Column's names: ")
+```{r}
+print(paste("Dataset contains", nrow(df.full), "registers"))
 colnames(df.full)
 sapply(df.full,class)
 str(df.full)
@@ -41,6 +49,70 @@ summary(df.full)
 
 ```
 
+Veiem que disposem d'un total de 891 registres que corresponen als viatgers i tripulació del Titanic, que es troben descrits per 12 atributs diferents. A continuació farem una definició més exhaustiva de cada camp.
+
+|    Variable   |                    Description                                                          |  Type   |
+|-------------- | ----------------------------------------------------------------------------------------| --------|
+|PassengerId    | ID del passatger                                                                        | Integer |
+|Pclass         | Classe en la qual viatjava el passatger                                                 | Integer |
+|Name           | Nom del passatger                                                                       | String  |
+|Sex            | Gènere del passatger                                                                    | String  |
+|Age            | Edat del passatger                                                                      | Numeric |
+|SibSp          | Factor que indicia el nombre de germans/parella que hi havia a bord (Sibilings/Spouses) | Integer |
+|Parch          | Factor que indica el nombre de pares/fills que hi havia a abord (Parents/Children)      | Integer |
+|Ticket         | ID del tiquet                                                                           | String  |
+|Fare           | Valor del tiquet                                                                        | Numeric |
+|Cabin          | Cabina assignada al passatger                                                           | String  |
+|Embarked       | Factor que indica a on va embarcar el passatger                                         | String  |
+|Survived       | Factor que indica si va sobreviure o no                                                 | Integer |
+|               |                                                                                         |         |
+
+# Anàlisi descriptiva i correlacions 
+
+Sempre és important elaborar un anàlisi sobre les dades per poder observar algun tipus de correlació, ja que d'aquestes dependran les conclusions finals.
+
+Ens recolzarem a un conjunt de processos gràfics que ens ajudaran de forma visual a reconèixer com es distribueixen alguns dels paràmetres corresponents als registres del dataset inicial. Farem ús de les llibreries __ggplot2__, __grid__, __gridExtra__ per a executar aquesta tasca.
+
+```{r}
+if(!require(ggplot2)){
+  install.packages('ggplot2', repos='http://cran.us.r-project.org')
+  library(ggplot2)
+}
+
+if(!require(grid)){
+    install.packages('grid', repos='http://cran.us.r-project.org')
+    library(grid)
+}
+
+if(!require(gridExtra)){
+  install.packages('gridExtra', repos='http://cran.us.r-project.org')
+  library(gridExtra)
+}
+```
+
+```{r, echo=TRUE, eval = TRUE}
+plotbyClass<-ggplot(df.full,aes(Pclass))+geom_bar() +labs(x="Pclass", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Pclass")
+#plotbyClass
+
+plotbyAge<-ggplot(df.full,aes(Age))+geom_histogram(bins=20, colour="black") +labs(x="Age", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Age")
+#plotbyAge
+
+plotbySex<-ggplot(df.full,aes(Sex))+geom_bar() +labs(x="Sex", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Sex")
+#plotbySex
+
+plotbySurvived<-ggplot(df.full,aes(Survived))+geom_bar() +labs(x="Survived", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Survived")
+#plotbySurvived
+#grid.arrange(plotbyClass,plotbyAge,plotbySex,plotbySurvived,ncol=2)
+
+plotbySibSp<-ggplot(df.full,aes(SibSp))+geom_bar() + labs(x="SibSp", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("SibSp")
+#plotbySibSp
+
+plotbyParch<-ggplot(df.full,aes(Parch))+geom_bar() + labs(x="Parch", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Parch")
+#plotbyParch
+
+grid.arrange(plotbyClass,plotbyAge,plotbySex,plotbySurvived,plotbySibSp,plotbyParch,ncol=2)
+
+```
 
 # Integració i selecció de les dades d’interès a analitzar.
 
@@ -221,7 +293,7 @@ RL.df.test$dummies.sex.test...2. <- NULL
 
 #Fem les prediccions
 RL.predictions <- predict(RL.model, RL.df.test)
-View(RL.predictions)
+#View(RL.predictions)
 plot(RL.predictions)
 
 #Apply Sigmoide function:
@@ -232,7 +304,7 @@ abline(h=0.5, col="red")
 
 #Computing survived parameter:
 RL.survived <- ifelse(sigmoideNormailzedValues > 0.5, 1,0)
-View(RL.survived)
+#View(RL.survived)
 RL.df.test$predictedValue <- sigmoideNormailzedValues
 RL.df.test$PredictedSurvived <- RL.survived
 
@@ -265,10 +337,10 @@ rpart.plot(DT.rpart.model)
 
 #Predictions
 DT.rpart.predictions <- predict(DT.rpart.model, DT.rpart.df.test)
-View(DT.rpart.predictions)
+#View(DT.rpart.predictions)
 
 DT.rpart.survived <- ifelse(DT.rpart.predictions > 0.5, 1,0)
-View(DT.rpart.survived)
+#View(DT.rpart.survived)
 
 #Adding columns for the comparison:
 DT.rpart.predictions <- factor(DT.rpart.predictions)
@@ -288,21 +360,4 @@ DT.rpart.confusionMatrix
 
 # Resultats i conclusions
 
-
-
-
-Amb aquesta taula jo la treuria.... en principi era per ensenyar les variables, però crec que és millor ensenyar-és fent un head del propi datset.
-#Todo
-
-|     Variable     |                    Description                         |  Type   |
-|----------------- | -------------------------------------------------------| --------|
-|Any               | Any del registre                                       | Numèric |
-|Mes               | Mes del registre                                       | Numeric |
-|CodiDistrict      | ID del districte                                       | Numeric |
-|NomDistrict       | Nom del districte                                      | String  |
-|CodiBarri         | ID del barri                                           | Numeric |
-|NomBarri          | Nom del barri                                          | String  |
-|Poblacio16_64anys | Població entre 16 i 64 anys                            | Numeric |
-|PesAtur           | Percentatge atur dins la població d'entre 16 i 64 anys | Numeric |
-|                  |                                                        |         |
 

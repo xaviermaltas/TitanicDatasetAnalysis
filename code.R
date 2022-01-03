@@ -12,6 +12,75 @@ colnames(df.full)
 # La variable 'name', pot tenir algun tipus amb el títol nobiliari? Finalment no mantenim 'name'
 #No es una variable que importi a l'hora de predir si un passatger sobreviu o no.
 
+if(!require(ggplot2)){
+  install.packages('ggplot2', repos='http://cran.us.r-project.org')
+  library(ggplot2)
+}
+
+if(!require(grid)){
+  install.packages('grid', repos='http://cran.us.r-project.org')
+  library(grid)
+}
+
+if(!require(gridExtra)){
+  install.packages('gridExtra', repos='http://cran.us.r-project.org')
+  library(gridExtra)
+}
+
+# https://cran.r-project.org/web/packages/ggplot2/index.html
+if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
+# https://cran.r-project.org/web/packages/dplyr/index.html
+if (!require('dplyr')) install.packages('dplyr'); library('dplyr')
+
+if(!require('magrittr')) install.packages('magrittr'); library('magrittr')
+
+grid.newpage()
+plotbyClass<-ggplot(df.full,aes(Pclass))+geom_bar() +labs(x="Pclass", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Pclass")
+plotbyClass
+
+plotbyAge<-ggplot(df.full,aes(Age))+geom_histogram(bins=20, colour="black") +labs(x="Age", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Age")
+#plotbyAge
+
+plotbySex<-ggplot(df.full,aes(Sex))+geom_bar() +labs(x="Sex", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Sex")
+#plotbySex
+
+plotbySurvived<-ggplot(df.full,aes(Survived))+geom_bar() +labs(x="Survived", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Survived")
+#plotbySurvived
+#grid.arrange(plotbyClass,plotbyAge,plotbySex,plotbySurvived,ncol=2)
+
+plotbySibSp<-ggplot(df.full,aes(SibSp))+geom_bar() + labs(x="SibSp", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("SibSp")
+#plotbySibSp
+
+plotbyParch<-ggplot(df.full,aes(Parch))+geom_bar() + labs(x="Parch", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Parch")
+#plotbyParch
+
+grid.arrange(plotbyClass,plotbyAge,plotbySex,plotbySurvived,plotbySibSp,plotbyParch,ncol=2)
+
+###survived grid
+grid.newpage()
+survivedbyClass<-ggplot(df.full,aes(x=(as.factor(Pclass)), fill=(as.factor(Survived))))+geom_bar()+labs(x="Pclass", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Survived by Pclass")
+#survivedbyClass
+
+survivedbySex <- ggplot(df.full, aes(x=(as.factor(Sex)), fill=(as.factor(Survived))))+geom_bar()+labs(x="Gender", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Survived by gender")
+#survivedbySex
+
+survivedbySibSp <- ggplot(df.full, aes(x=(as.factor(SibSp)), fill=(as.factor(Survived))))+geom_bar()+labs(x="SibSp", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Survived by SibSp")
+#survivedbySibSp
+
+survivedbyParch <- ggplot(df.full, aes(x=(as.factor(Parch)), fill=(as.factor(Survived))))+geom_bar()+labs(x="Parch", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Survived by Parch")
+#survivedbyParch
+
+grid.arrange(survivedbyClass,survivedbySex,survivedbySibSp,survivedbyParch,ncol=2)
+
+###survived age
+survivedbyAge<-ggplot(df.full, aes(x=Age, fill=(as.factor(Survived))))+geom_histogram(bins=20, colour="black")+labs(x="Age", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Survived by Age")
+survivedbyAge
+
+survivedbyAgeSexClass<-ggplot(df.full, aes(x=Age, fill=(as.factor(Survived))))+geom_histogram(bins=20, colour="black")+ facet_grid(Sex~Pclass, scales="free")+labs(x="Age", y="Passengers")+guides(fill=guide_legend(title=""))+ggtitle("Survived by age, sex and ticket class")
+survivedbyAgeSexClass
+
+
+
 # -Integració i seleccio dades-
 relevantFields <- c("Survived", "Pclass", "Sex", "Age", "SibSp", "Parch", "Fare")
 df <- df.full[relevantFields]
