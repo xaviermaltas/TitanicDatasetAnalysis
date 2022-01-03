@@ -36,7 +36,7 @@ if(!require('magrittr')) install.packages('magrittr'); library('magrittr')
 
 grid.newpage()
 plotbyClass<-ggplot(df.full,aes(Pclass))+geom_bar() +labs(x="Pclass", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Pclass")
-plotbyClass
+#plotbyClass
 
 plotbyAge<-ggplot(df.full,aes(Age))+geom_histogram(bins=20, colour="black") +labs(x="Age", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Age")
 #plotbyAge
@@ -193,19 +193,19 @@ RL.df <- data.frame(df.clean, dummies.sex[,2])
 RL.df$dummies.sex <- RL.df$dummies.sex...2.
 RL.df$dummies.sex...2. <- NULL
 
-#RL - Model de regressió logistica 
-if (!require('caret')) install.packages('caret'); library('caret')
-
-#Creating Sigmoide function
-RL.model <- glm(Survived ~ Pclass + dummies.sex +Age + SibSp + Parch + Fare, data=RL.df, family=binomial) #https://stats.idre.ucla.edu/r/dae/logit-regression/
-summary(RL.model)
-
 #Clean Test DF
 df.test <- select(df.test, Pclass, Sex, Age, SibSp, Parch, Fare)
 colSums(is.na(df.test))
 colSums(df.test=="")
 df.test$Age[is.na(df.test$Age)] <- mean(df.test$Age,na.rm=T)
 df.test$Fare[is.na(df.test$Fare)] <- 0 #If this value is a NA, we set it to 0. We can not know which was its price.
+
+#RL - Model de regressió logistica 
+if (!require('caret')) install.packages('caret'); library('caret')
+
+#Creating Sigmoide function
+RL.model <- glm(Survived ~ Pclass + dummies.sex +Age + SibSp + Parch + Fare, data=RL.df, family=binomial) #https://stats.idre.ucla.edu/r/dae/logit-regression/
+summary(RL.model)
 
 #RL df.test
 RL.df.test <- df.test
@@ -241,6 +241,9 @@ PredictedSurvivedFactor <- factor(RL.df.test$PredictedSurvived)
 RealSurvivedFactor <- factor(RL.df.test$RealSurvived)
 RL.confusionMatrix <- confusionMatrix(PredictedSurvivedFactor,RealSurvivedFactor)
 RL.confusionMatrix
+
+dir.create("analyzedDataset")
+write.csv(RL.df.test,"analyzedDataset\\RLDataframe.csv", row.names = TRUE)
 
 #DT - Decision Tree
 DT.df <- df.clean
@@ -291,3 +294,5 @@ DT.rpart.realSurvived.factor <- factor(DT.rpart.df.test$RealSurvived)
 
 DT.rpart.confusionMatrix <- confusionMatrix(DT.rpart.predictedSurvived.factor,DT.rpart.realSurvived.factor)
 DT.rpart.confusionMatrix
+
+write.csv(DT.rpart.df.test,"analyzedDataset\\DTrpartDataframe.csv", row.names = TRUE)

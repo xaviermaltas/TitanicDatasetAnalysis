@@ -73,7 +73,7 @@ Sempre és important elaborar un anàlisi sobre les dades per poder observar alg
 
 Ens recolzarem a un conjunt de processos gràfics que ens ajudaran de forma visual a reconèixer com es distribueixen alguns dels paràmetres corresponents als registres del dataset inicial. Farem ús de les llibreries __ggplot2__, __grid__, __gridExtra__ per a executar aquesta tasca.
 
-```{r}
+```{r, echo=FALSE}
 if(!require(ggplot2)){
   install.packages('ggplot2', repos='http://cran.us.r-project.org')
   library(ggplot2)
@@ -114,9 +114,41 @@ grid.arrange(plotbyClass,plotbyAge,plotbySex,plotbySurvived,plotbySibSp,plotbyPa
 
 ```
 
+Un cop observada la distribució de les anteriors variables, ens interessa descriure quina és la relació que hi ha entre cadascun d'aquests valors amb la supervivència. És per aquest motiu, que realitzarem uns gràfics similars als anteriors, però superposant la proporció de supervivents en cada un dels paràmetres.
+
+```{r, echo=TRUE, eval = TRUE}
+survivedbyClass<-ggplot(df.full,aes(x=(as.factor(Pclass)), fill=(as.factor(Survived))))+geom_bar()+labs(x="Pclass", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Survived by Pclass")
+#survivedbyClass
+
+survivedbySex <- ggplot(df.full, aes(x=(as.factor(Sex)), fill=(as.factor(Survived))))+geom_bar()+labs(x="Gender", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Survived by gender")
+#survivedbySex
+
+survivedbySibSp <- ggplot(df.full, aes(x=(as.factor(SibSp)), fill=(as.factor(Survived))))+geom_bar()+labs(x="SibSp", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Survived by SibSp")
+#survivedbySibSp
+
+survivedbyParch <- ggplot(df.full, aes(x=(as.factor(Parch)), fill=(as.factor(Survived))))+geom_bar()+labs(x="Parch", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Survived by Parch")
+#survivedbyParch
+
+grid.arrange(survivedbyClass,survivedbySex,survivedbySibSp,survivedbyParch,ncol=2)
+```
+
+A la primera gràfica podem observar que més o menys van sobreviure la mateixa quantitat de persones dels diferents tipus de classes, tot i que la proporció és bastant més favorable com millor era la classe. Pel que fa al gènere, observem que la quantitat de dones respecte homes passatgers era inferior, tot i que pel que fa a en termes de supervivència, les dones van tenir un percentatge molt més elevat. Finalment, a les dues últimes gràfiques, podem extreure que el fet de tenir familiars a bord, no té una relació directa amb la supervivència.
+
+```{r, echo=TRUE, eval = TRUE}
+survivedbyAge<-ggplot(df.full, aes(x=Age, fill=(as.factor(Survived))))+geom_histogram(bins=20, colour="black")+labs(x="Age", y="Passengers")+ guides(fill=guide_legend(title=""))+ggtitle("Survived by Age")
+survivedbyAge
+
+survivedbyAgeSexClass<-ggplot(df.full, aes(x=Age, fill=(as.factor(Survived))))+geom_histogram(bins=20, colour="black")+ facet_grid(Sex~Pclass, scales="free")+labs(x="Age", y="Passengers")+guides(fill=guide_legend(title=""))+ggtitle("Survived by age, sex and ticket class")
+survivedbyAgeSexClass
+```
+
+A través dels anteriors dos gràfics podem observar que l'edat dels passatgers es concentra principalment en el rang d'entre els 18 i 35 anys.
+Pel que fa a la supervivència, després de desgranar la mostra per edat, sexe i classe, observem que les dones tenen un alt percentatge de sobreviure independentment de la classe en la qual viatgessin. Pel que fa als homes, la classe en la qual viatjaven sí que té rellevància. És fàcilment observable que els de primera classe tenien una alta probabilitat de sobreviure, mentre que les dues classes restants la probabilitat disminuïa amb relació a la classe.
+
 # Integració i selecció de les dades d’interès a analitzar.
 
-Les variables que mantenim per fer el posterior anàlisi de les dades són:
+Tenint en compte l'estudi visual anterior, hem cregut oportú reduir la quantitat de variables de la mostra amb les que treballar, i només disposar d'aquelles que hem observat que tenen una major rellevància.
+Les variables que mantenim per fer el posterior anàlisi de les dades són les següents:
 
 - Survived
 - Pclass
@@ -127,11 +159,9 @@ Les variables que mantenim per fer el posterior anàlisi de les dades són:
 - Fare
 
 ```{r, echo=FALSE, eval = TRUE}
-
 relevantFields <- c("Survived", "Pclass", "Sex", "Age", "SibSp", "Parch", "Fare")
 df <- df.full[relevantFields]
 head(df)
-
 ```
 
 La variable 'name', podria tenir algun tipus de relació amb el títol nobiliari, però finalment no la mantenim, ja que
@@ -139,12 +169,11 @@ no és una variable que importi a l'hora de predir si un passatger sobreviu o no
 
 # Neteja de dades
 
-## Les dades contenen zeros o elements buits? Com gestionaries aquests casos?
+## Gestió dels elements buits
 
-Veiem que la variable que conté valors nuls és 'Age', decidim reemplaçar aquests valors nuls per la mitjana total de la variable: 
+Veiem que la variable que conté valors nuls és 'Age', decidim rellevar aquests valors nuls per la mitjana total de la variable: 
 
 ```{r, echo=TRUE, eval = TRUE}
-
 #Check NA values
 colSums(is.na(df))
 colSums(df=="")
@@ -154,22 +183,29 @@ mean(df$Age)
 df$Age[is.na(df$Age)] <- mean(df$Age,na.rm=T)
 
 colSums(is.na(df))
-
 ```
 ## Identificació i tractament de valors extrems.
 
+Les variables que analitzarem del dataframe són 'Age' i 'Fare', ja que són les úniques pròpiament numèriques. 
+Per observar els outliers realitzarem gràfics de caixes o boxplots.
 
-Les variables a analitzar del dataframe són 'Age' i 'Fare' ja que són les úniques pròpiament numèriques. 
-Grafiquem els gràfics de caixes o boxplots per veure els outliers: 
+### Identificació outliers
+
+#### Age
+
+Començarem per la variable 'Age', veient estadístiques de la variable i grafiant els boxplots.
 
 ```{r, echo=TRUE, eval = TRUE}
-
-#Començarem amb els de la variable 'Age', veient estadístiques de la variable i graficant els boxplots: 
+#'Age' 
 summary(df$Age)
 age.bp <- boxplot(df$Age, xlab = "Age", horizontal=TRUE)
 ageOutliersAge <- age.bp$out
 ageOutliersAge
+```
+Observem que tots aquells valors iguals o inferiors a 2 o igual i superiors a 55 són considerats outliers.
+A continuació realitzarem diverses comprovacions per tal de validar aquests resultats.
 
+```{r, echo=TRUE, eval = TRUE}
 #Aquesta primera verificació s'ha tret de la següent font de dades: 
 #https://www.adictosaltrabajo.com/2019/11/28/deteccion-y-reemplazo-de-outliers-con-r/
 
@@ -185,6 +221,9 @@ out_upp_Age
 out_low_Age <- 22 - 1.5 * iAge
 out_low_Age
 
+```
+
+```{r, echo=TRUE, eval = TRUE}
 # Criteri +/-2SD - 
 #Hem utilitzat les següents pàgines web per guiar-nos amb aquest criteri:
 #https://machinelearningmastery.com/how-to-use-statistics-to-identify-outliers-in-data/
@@ -194,8 +233,10 @@ out_low_Age
 mean<-mean(df$Age)
 sd<-sd(df$Age)
 cutoff<- sd*2
+print(paste("Cutoff: ",cutoff))
 upperBoundaryAge <- mean+cutoff
 lowerBoundaryAge <- mean-cutoff
+print(paste("Range: [", lowerBoundaryAge, ",",upperBoundaryAge, "]"))
 
 #Graficar els outliers amb gràfic de punts: 
 age.outlier.Age <- abs(scale(df$Age)) > 2
@@ -203,7 +244,15 @@ outliers <- na.omit(rbind(df[age.outlier.Age,],df$Age))
 dataSetWOutliers <- df[!(df$Age %in% outliers$Age),]
 plot(dataSetWOutliers$Age, pch=0, xlab="Nº item", ylab="Age",ylim=c(0,90))
 points(outliers$Age, pch=16, col="red")
+```
 
+Un cop realitzades les comprovacions a través de dos criteris diferents, podem veure que els resultats previament obtinguts concorden amb el que hem obtingut a les validacions. 
+
+#### Fare
+
+Amb la variable 'Fare' seguirem els mateixos passos que hem realitzat amb l'anterior.
+
+```{r, echo=TRUE, eval = TRUE}
 #Identificació outliers variable 'Fare':
 #Analitzar estadístiques de 'Fare':
 summary(df$Fare)
@@ -215,6 +264,11 @@ fareOutliers
 quantile(df$Fare)
 iFare <- IQR(df$Fare)
 iFare
+```
+
+Mitjançant el bloxplot veiem que els outliers es concentren al costat dret del gràfic, tal que qualsevol valor superior a 69 considera outlier. Prosseguim amb les comprovacions.
+
+```{r, echo=TRUE, eval = TRUE}
 #Outliers per damunt del bigotis:
 #Q3 + 1,5 x IQR 
 out_upp_Fare <- 31 + 1.5 * iFare
@@ -225,38 +279,47 @@ out_low_Fare <- 7.91 - 1.5 * iFare
 out_low_Fare
 #En aquest cas el valor més baix és negatiu i com que no hi ha valors 'Fare' per sota de zero, vol dir que no hi ha outliers per sota del bigotis. 
 
+```
+
+```{r, echo=TRUE, eval = TRUE}
 # Criterio +/-2SD:
 mean<-mean(df$Fare)
 sd<-sd(df$Fare)
 cutoff<- sd*2
-upperBoundaryFare <- mean+cutoff
-lowerBoundaryFare <- mean-cutoff
+print(paste("Cutoff: ",cutoff))
+upperBoundaryAge <- mean+cutoff
+lowerBoundaryAge <- mean-cutoff
+print(paste("Range: [", lowerBoundaryAge, ",",upperBoundaryAge, "]"))
 
 fare.outlier <- abs(scale(df$Fare)) > 2
 outliers <- na.omit(rbind(df[fare.outlier,],df$Fare))
 dataSetWOutliers <- df[!(df$Fare %in% outliers$Fare),]
 plot(dataSetWOutliers$Fare, pch=0, xlab="Nº item", ylab="Fare", ylim = c(0,515))
 points(outliers$Fare, pch=16, col="red")
+```
 
-#Els outliers 'Age' els eliminem del dataframe, ja que no son gaires i generen soroll i desviacions 
-#quan fem anàlisis i fem models de predicció.
+### Tractament outliers
 
-#Els de 'Fare'són bastant més, i al treure'ls sí estariem eliminant molta informació del data,
-#Decidim deixar-los en el dataframe per analitzar ja que son dades reals, perquè per exemple, la tripulacio no pagava #el ticket, en canvi els rics de 1ª classe pagaven els tickets molt més cars que els de tercera, és una diferenciació #REAL. 
+Un cop observat els resultats dels outliers de les variables 'Age' i 'Fare', hem arribat al següent plantejament.
+Pel que fa a la variable 'Age', hem decidit eliminar aquests registres del dataframe, ja que és una quantitat molt poc rellevant i generen soroll i desviacions, cosa que no ens interessa a l'hora d'entrenar el nostre model predictiu.
 
-#Eliminem els outliers variable Age:
+Respecte als outliers de la variable 'Fare' hem decidit no eliminar-los. Això és degut al fet que la quantitat d'aquests és bastant més elevada que els de la variable 'Age' i estaríem eliminant una gran part de la nostra mostra. A la vegada, un altre motiu que ens ha portat a mantenir-los és que la tripulació no pagava tiquet, així doncs, és normal que apareguin outliers per sota, ja que el cost era zero. Per altra banda, pel que fa als rics, aquells que pagaven una suma molt més elevada també formen part de la mostra i és un element que hem de mantenir per tal de tenir en compte i analitzar-ho.
+
+```{r, echo=TRUE, eval = TRUE}
 library('dplyr')
+#Eliminem els outliers variable Age:
 df.clean <- df %>% filter(Age > 2 & Age < 55)
 head(df.clean)
 ```
+
+
 # Anàlisi de les dades i representació dels resultats a partir de taules i gràfiques.
 
 Hem decidit juntar el punt 4 i 5 perquè a mesura que anem fent anàlisis i prediccions del dataset anem mostrant les gràfiques corresponents d'aquella predicció en contret. D'aquesta manera el codi i els gràfics estan millor organitzats i s'entèn millor. 
 
+Inicialment, hem creat unes _dummy variables_ amb els valors de 'Sex' transformant-les en valors numèrics i així poder-les utilitzar per realitzar prediccions.
+
 ```{r, echo=TRUE, eval = TRUE}
-
-#Per començar hem creat una variable dummy amb 'Sex' per transofrmar-la en numèrica i poder utilitzar-la per fer predicions: 
-
 #Sex to dummy variables
 sexfactor = factor(df.clean$Sex)
 dummies.sex = model.matrix(~sexfactor)
@@ -264,7 +327,19 @@ RL.df <- data.frame(df.clean, dummies.sex[,2])
 RL.df$dummies.sex <- RL.df$dummies.sex...2.
 RL.df$dummies.sex...2. <- NULL
 
+#Clean Test DF, per fer les prediccions necessitarem el datset de test, que hem carregat al començament de la pràctica, i també s'ha de netejar de la mateixa forma que el dataset de 'train': 
+df.test <- select(df.test, Pclass, Sex, Age, SibSp, Parch, Fare)
+colSums(is.na(df.test))
+colSums(df.test=="")
+df.test$Age[is.na(df.test$Age)] <- mean(df.test$Age,na.rm=T)
+df.test$Fare[is.na(df.test$Fare)] <- 0 #If this value is a NA, we set it to 0. We can not know which was its price.
 
+```
+## Model de regressió logística
+
+El primer model predictiu que hem decidit utilitzar és el de la regressió logística. Aquest model fa ús de la funció Sigmoide que ens permetrà classificar diferents valors d'entrada depenent d'un valor de tall.
+
+```{r, echo=TRUE, eval = TRUE}
 #Hem començat fent un model de regressió logística representat dins una funció Sigmoide: 
 
 #RL - Model de regressió logistica 
@@ -273,15 +348,11 @@ if (!require('caret')) install.packages('caret'); library('caret')
 #Creating Sigmoide function
 RL.model <- glm(Survived ~ Pclass + dummies.sex +Age + SibSp + Parch + Fare, data=RL.df, family=binomial) #https://stats.idre.ucla.edu/r/dae/logit-regression/
 summary(RL.model)
+```
 
-#Clean Test DF, per fer les prediccions necessitarem el datset de test, que hem carregat al començament de la pràctica, i també s'ha de netejar de la mateixa forma que el dataset de 'train': 
+Un cop disposem del model predictiu de regressió logística, ens disposem a realitzar les prediccions.
 
-df.test <- select(df.test, Pclass, Sex, Age, SibSp, Parch, Fare)
-colSums(is.na(df.test))
-colSums(df.test=="")
-df.test$Age[is.na(df.test$Age)] <- mean(df.test$Age,na.rm=T)
-df.test$Fare[is.na(df.test$Fare)] <- 0 #If this value is a NA, we set it to 0. We can not know which was its price.
-
+```{r, echo=TRUE, eval = TRUE}
 #Regressió Logística del dataset de test, df.test:
 RL.df.test <- df.test
 sexfactor.test = factor(RL.df.test$Sex)
@@ -290,17 +361,27 @@ RL.df.test <- data.frame(RL.df.test, dummies.sex.test[,2])
 RL.df.test$dummies.sex <- RL.df.test$dummies.sex.test...2.
 RL.df.test$dummies.sex.test...2. <- NULL
 
-
 #Fem les prediccions
 RL.predictions <- predict(RL.model, RL.df.test)
 #View(RL.predictions)
 plot(RL.predictions)
 
+```
+
+Apliquem la funció Sigmoide per normalitzar els valors.
+
+```{r, echo=TRUE, eval = TRUE}
 #Apply Sigmoide function:
 sigmoideFunction <- function(x){1/(1+exp(-x))}
 sigmoideNormailzedValues <- sapply(RL.predictions, sigmoideFunction)
 plot(sigmoideNormailzedValues)
 abline(h=0.5, col="red")
+
+```
+
+A continuació separem els registres depenent del valor de tall 0.5. Els que són superior són considerats supervivents, mentre que els que tenen un valor inferior, no. 
+
+```{r, echo=TRUE, eval = TRUE}
 
 #Computing survived parameter:
 RL.survived <- ifelse(sigmoideNormailzedValues > 0.5, 1,0)
@@ -308,39 +389,83 @@ RL.survived <- ifelse(sigmoideNormailzedValues > 0.5, 1,0)
 RL.df.test$predictedValue <- sigmoideNormailzedValues
 RL.df.test$PredictedSurvived <- RL.survived
 
+
+```
+
+Seguidament, realitzem la comparativa entre els valors testejats i els valors reals dels mateixos registres. 
+```{r, echo=TRUE, eval = TRUE}
 #Test with the real results
 RL.df.test$RealSurvived <- df.realSurvived$Survived
 head(RL.df.test)
-#Per acabar de veure l'exactitud del model que acabem de crear fem una matriu de confusió, ja que és una bona forma de comprovar-ho: 
+```
+
+Per acabar i veure l'exactitud del model creat, realitzem la matriu de confusió.
+
+```{r, echo=TRUE, eval = TRUE}
+#Confusion Matrix 
 PredictedSurvivedFactor <- factor(RL.df.test$PredictedSurvived)
 RealSurvivedFactor <- factor(RL.df.test$RealSurvived)
 RL.confusionMatrix <- confusionMatrix(PredictedSurvivedFactor,RealSurvivedFactor)
 RL.confusionMatrix
 #Aquest model té un exactitud del 95% segons la matriu de confusió.
 
+#Creació del fitxer csv resultant
+dir.create("analyzedDataset")
+write.csv(RL.df.test,"analyzedDataset\\RLDataframe.csv", row.names = TRUE)
+
+```
+
+Observem que l'exactitud del model de regressió logística és del 95%.
+
+## Model arbre de decisió
+
+```{r, echo=TRUE, eval = TRUE}
+
 #DT - Decision Tree
 DT.df <- df.clean
 summary(DT.df)
+```
 
-#Per fer l'anàlisi de prediccions d'arbre de decisió necessitem el paquet 'rpart' i per representar els resultats el 'rpart.plot':
+Per fer l'anàlisi de prediccions amb un model d'arbre de decisió necessitem el paquet __rpart__ i per representar els resultats el __rpart.plot__.
 
+```{r, echo=TRUE, eval = TRUE}
 if (!require('rpart')) install.packages('rpart'); library('rpart')
 if (!require('rpart.plot')) install.packages('rpart.plot'); library('rpart.plot')
 
 DT.rpart.df <- DT.df
 DT.rpart.df.test <- df.test
 
+
+```
+
+Els models predictius de tipus arbre de decisió estan formats per un conjunt de nodes (node de decisió) que efectuen una pregunta sobre el valor d'un atribut. Les diferents respostes que s'hi poden anar donant generen nous nodes de decisió construint un arbre. Al final de cada camí recorregut al llarg de l'arbre hi trobarem el valor predit. 
+
+```{r, echo=TRUE, eval = TRUE}
 #Model creation
 DT.rpart.model <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare, data=DT.rpart.df)
 summary(DT.rpart.model)
 rpart.plot(DT.rpart.model)
 
+```
+
+Un cop disposem del model d'arbre de decisió, ens disposem a realitzar les prediccions.
+
+```{r, echo=TRUE, eval = TRUE}
 #Predictions
 DT.rpart.predictions <- predict(DT.rpart.model, DT.rpart.df.test)
 #View(DT.rpart.predictions)
+```
 
+A continuació separem els registres depenent del valor de tall 0.5. Els que són superior són considerats supervivents, mentre que els que tenen un valor inferior, no.
+
+```{r, echo=TRUE, eval = TRUE}
 DT.rpart.survived <- ifelse(DT.rpart.predictions > 0.5, 1,0)
 #View(DT.rpart.survived)
+```
+
+Seguidament, realitzem la comparativa entre els valors testejats i els valors reals dels mateixos registres.
+
+```{r, echo=TRUE, eval = TRUE}
 
 #Adding columns for the comparison:
 DT.rpart.predictions <- factor(DT.rpart.predictions)
@@ -348,6 +473,11 @@ DT.rpart.df.test$predictedValue <- DT.rpart.predictions
 DT.rpart.df.test$PredictedSurvived <- DT.rpart.survived
 DT.rpart.df.test$RealSurvived <- df.realSurvived$Survived
 head(DT.rpart.df.test)
+```
+
+Per acabar i veure l’exactitud del model creat, realitzem la matriu de confusió.
+
+```{r, echo=TRUE, eval = TRUE}
 #Confusion Matrix:
 
 DT.rpart.predictedSurvived.factor <- factor(DT.rpart.df.test$PredictedSurvived)
@@ -355,9 +485,24 @@ DT.rpart.realSurvived.factor <- factor(DT.rpart.df.test$RealSurvived)
 
 DT.rpart.confusionMatrix <- confusionMatrix(DT.rpart.predictedSurvived.factor,DT.rpart.realSurvived.factor)
 DT.rpart.confusionMatrix
-#Aquest model té un exactitud del 94% segons la matriu de confusió, per tant el model de predicció de Regressió Logística, fet anteriorment seria una mica més acurat.
+#Aquest model té un exactitud del 94% segons la matriu de confusió.
+
+#Creació del fitxer csv resultant
+write.csv(DT.rpart.df.test,"analyzedDataset\\DTrpartDataframe.csv", row.names = TRUE)
 ```
+
+Observem que l’exactitud del model d'arbre de decisió  és del 94%.
 
 # Resultats i conclusions
 
+Un cop aplicats els dos models de predicció anteriors al dataset escollit __'Titanic - Machine Learning from Disaster'__, hem observat i comprovat que les variables més rellevants alhora concloure la supervivència d'un passatger són _Sex_, _Age_ i _Pclass_. Tal com hem vist als gràfics d'anàlisi de correlacions, les dones disposen d'una major probabilitat de sobreviure als homes, independentment de la classe del seu bitllet. Pel que fa als homes, la classe del tiquet i l'edat són paràmetres molt importants a tenir en compte per la predicció de la supervivència d'aquest.
+Finalment, destacar el treball previ realitzar sobre les dades durant el procés de neteja, que ha desembocat a una alta exactitud d'ambdós models predictius.s
 
+
+# Taula de contribucions
+
+|    Contribucions          |            Firma              |  
+|-------------------------- | ------------------------------| 
+|Investigació prèvia        |  Xavier Maltas i Mónica Ortiz | 
+|Redacció de les respostes  |  Xavier Maltas i Mónica Ortiz | 
+|Desenvolupament codi       |  Xavier Maltas i Mónica Ortiz | 
